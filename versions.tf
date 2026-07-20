@@ -5,11 +5,11 @@ terraform {
         version = "3.0.1"
     }
     helm = {
-        source = "hashicorp/helm"
+        source  = "hashicorp/helm"
         version = "3.1.1"
     }
     vault = {
-        source = "hashicorp/vault"
+        source  = "hashicorp/vault"
         version = ">= 5.4.0"
     }
   }

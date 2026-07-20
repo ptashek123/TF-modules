@@ -1,3 +1,9 @@
+module "cilium" {
+  source   = "./modules/cilium"
+  settings = var.cilium
+}
+
+
 module "fluxcd" {
   count      = var.fluxcd.enabled ? 1 : 0
   depends_on = [module.cilium]

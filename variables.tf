@@ -1,3 +1,33 @@
+variable "cilium" {
+  type = object({
+    version          = optional(string, "1.19.5")
+    helm_repository  = optional(string, "oci://xD")
+    image_repository = optional(string, "oci://xD")
+    master_node      = optional(string, "127.0.0.1")
+    hubble_host      = string
+    cluster_domain   = string
+    
+    egress = object({
+      enabled = optional(bool, false)
+      nodes   = list(string)
+    })
+    
+    gatewayapi = object({
+      enabled = optional(bool, false)
+      version = optional(string, "1.5.1")
+    })
+    
+    ingress = object({
+      enabled = optional(bool, false)
+      node_label = optional(object({
+        key   = optional(string, "node-role.kubernetes.io/ingress")
+        value = optional(string, "")
+      }), {})
+    })
+  })
+}
+
+
 variable "fluxcd" {
   description = "Flux CD configuration"
   type = object({
