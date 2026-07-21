@@ -4,23 +4,20 @@ resource "kubernetes_namespace_v1" "flux" {
   }
 }
 
-data "vault_generic_secret" "git_creds" {
-  for_each = { for idx, repo in var.repositories : repo.name => repo }
-  path     = each.value.secret_vault_path
-}
-
 resource "kubernetes_secret_v1" "git_auth" {
-  for_each = { for idx, repo in var.repositories : repo.name => repo }
+  for_each = { for repo in var.repositories : repo.name => repo }
 
   metadata {
     name      = "git-auth-${each.key}"
     namespace = kubernetes_namespace_v1.flux.metadata[0].name
   }
   type = "Opaque"
+
   data = {
-    username = data.vault_generic_secret.git_creds[each.key].data["username"]
-    password = data.vault_generic_secret.git_creds[each.key].data["password"]
+    username = each.value.username
+    password = each.value.password
   }
+
   depends_on = [kubernetes_namespace_v1.flux]
 }
 

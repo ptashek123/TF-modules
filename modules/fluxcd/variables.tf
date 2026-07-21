@@ -7,6 +7,8 @@ variable "namespace" {
 variable "repositories" {
   description = "List of Git repositories to be managed by Flux. Each repository requires Vault path for credentials."
   type = list(object({
+    username          = optional(string, null)
+    password          = optional(string, null)
     name              = string
     url               = string
     branch            = optional(string, "main")
