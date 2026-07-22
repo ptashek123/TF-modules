@@ -25,7 +25,7 @@ variable "settings" {
       })
     })
   })
-  
+
   validation {
     condition     = contains(["1.19.4", "1.19.5"], var.settings.version)
     error_message = "Cilium version must be 1.19.4 or 1.19.5"

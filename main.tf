@@ -10,8 +10,8 @@ module "fluxcd" {
 
   source = "./modules/fluxcd"
 
-  namespace    = var.fluxcd.namespace
-  
+  namespace = var.fluxcd.namespace
+
   repositories = [
     for repo in var.fluxcd.repositories : merge(repo, {
       username = sensitive(data.vault_generic_secret.git_creds[repo.name].data["username"])
@@ -32,4 +32,19 @@ module "fluxcd" {
 data "vault_generic_secret" "git_creds" {
   for_each = { for repo in var.fluxcd.repositories : repo.name => repo }
   path     = each.value.secret_vault_path
+}
+
+
+module "cert_manager" {
+  count  = var.cert_manager.enabled ? 1 : 0
+  source = "./modules/cert-manager"
+
+  namespace                         = var.cert_manager.namespace
+  install_crds                      = var.cert_manager.install_crds
+  prometheus_enabled                = var.cert_manager.prometheus_enabled
+  prometheus_servicemonitor_enabled = var.cert_manager.prometheus_servicemonitor_enabled
+  webhook_timeout_seconds           = var.cert_manager.webhook_timeout_seconds
+  chart_src                         = var.cert_manager.chart_src
+  extra_values                      = var.cert_manager.extra_values
+  cluster_issuers                   = var.cert_manager.cluster_issuers
 }

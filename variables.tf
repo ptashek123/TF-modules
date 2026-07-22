@@ -6,17 +6,17 @@ variable "cilium" {
     master_node      = optional(string, "127.0.0.1")
     hubble_host      = string
     cluster_domain   = string
-    
+
     egress = object({
       enabled = optional(bool, false)
       nodes   = list(string)
     })
-    
+
     gatewayapi = object({
       enabled = optional(bool, false)
       version = optional(string, "1.5.1")
     })
-    
+
     ingress = object({
       enabled = optional(bool, false)
       node_label = optional(object({
@@ -26,7 +26,6 @@ variable "cilium" {
     })
   })
 }
-
 
 variable "fluxcd" {
   description = "Flux CD configuration"
@@ -99,5 +98,35 @@ variable "fluxcd" {
     enabled      = false
     namespace    = "flux-system"
     repositories = []
+  }
+}
+
+variable "cert_manager" {
+  description = "cert-manager configuration"
+  type = object({
+    enabled = bool
+
+    namespace = optional(string, "cert-manager")
+
+    install_crds                      = optional(bool, true)
+    prometheus_enabled                = optional(bool, false)
+    prometheus_servicemonitor_enabled = optional(bool, false)
+    webhook_timeout_seconds           = optional(number, 30)
+
+    chart_src = optional(object({
+      repo    = optional(string, "oci://xD")
+      version = optional(string, "v1.17.2")
+    }), {})
+
+    extra_values = optional(any, {})
+
+    cluster_issuers = optional(list(object({
+      name = string
+      spec = any
+    })), [])
+  })
+
+  default = {
+    enabled = false
   }
 }

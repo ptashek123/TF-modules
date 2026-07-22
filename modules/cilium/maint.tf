@@ -31,9 +31,9 @@ resource "helm_release" "cilium" {
 }
 
 module "egress" {
-  count      = var.settings.egress.enabled ? 1 : 0
-  source     = "./modules/egress"
-  nodes      = var.settings.egress.nodes
+  count  = var.settings.egress.enabled ? 1 : 0
+  source = "./modules/egress"
+  nodes  = var.settings.egress.nodes
 
   depends_on = [helm_release.cilium]
 }
