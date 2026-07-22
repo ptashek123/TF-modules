@@ -88,7 +88,7 @@ variable "tf_controller" {
 variable "flux_chart_src" {
   description = "Source of Flux chart"
   type = object({
-    repo    = optional(string, "oci://harbor.bank.srv/k8splatform")
+    repo    = optional(string, "oci://xD")
     version = optional(string, "2.18.4")
   })
 
@@ -98,7 +98,7 @@ variable "flux_chart_src" {
 variable "tf_controller_chart_src" {
   description = "Source of tf-controller chart"
   type = object({
-    repo    = optional(string, "oci://harbor.bank.srv/k8splatform")
+    repo    = optional(string, "oci://xD")
     version = optional(string, "0.16.0")
   })
 
