@@ -37,9 +37,7 @@ resource "helm_release" "fluxcd" {
       controllers        = var.flux.controllers
       multitenancy       = var.flux.multitenancy
       extraValues        = var.flux.extraValues
-
       prometheus = var.prometheus_podmonitor_enabled ? { PodMonitor = { enabled = true } } : {}
-
       imageAutomation = var.image_automation_enabled ? { enabled = true } : {}
     })
   ]

@@ -3,27 +3,37 @@ variable "cilium" {
     version          = optional(string, "1.19.5")
     helm_repository  = optional(string, "oci://xD")
     image_repository = optional(string, "oci://xD")
-    master_node      = optional(string, "127.0.0.1")
-    hubble_host      = string
-    cluster_domain   = string
-
-    egress = object({
+    master_node      = string
+    cluster_domain   = optional(string, "cluster.local")
+    
+    hubble_host      = optional(object({
       enabled = optional(bool, false)
-      nodes   = list(string)
-    })
+      ingress = optional(object({
+        enabled = optional(bool, false)
+        hosts   = optional(list(string), [])
+        tls = optional(object({
+          enabled = optional(bool, false)
+          list = optional(list(object({ secret = string, hosts = optional(list(string), []) })), [])
+        }), {})
+      }), {})
+    }), {})
 
-    gatewayapi = object({
+    egress = optional(object({
       enabled = optional(bool, false)
-      version = optional(string, "1.5.1")
-    })
+      nodes   = optional(list(string), [])
+    }), {})
 
-    ingress = object({
+    gatewayapi = optional(object({
+      enabled = optional(bool, false)
+    }), {})
+
+    ingress = optional(object({
       enabled = optional(bool, false)
       node_label = optional(object({
         key   = optional(string, "node-role.kubernetes.io/ingress")
         value = optional(string, "")
       }), {})
-    })
+    }), {})
   })
 }
 

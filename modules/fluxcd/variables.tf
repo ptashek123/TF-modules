@@ -114,6 +114,7 @@ variable "git_conf" {
     secretRef = optional(string, null)
     extraSpec = optional(any, {})
   })
+  
   default = {}
 }
 
@@ -127,6 +128,7 @@ variable "kustomization" {
     force      = optional(bool, false)
     extraSpec  = optional(any, {})
   })
+
   default = {}
 }
 
