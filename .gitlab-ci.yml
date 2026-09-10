@@ -1,0 +1,183 @@
+spec:
+  inputs:
+    version:
+      type: string
+      default: "0.0.0"
+      description: "Version for deploy develop module"
+      regex: ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
+
+default:
+  tags:
+    - ossi-ci-kub
+
+workflow:
+  name: "${CI_PROJECT_TITLE} ${CI_MERGE_REQUEST_LABELS}"
+  auto_cancel:
+    on_new_commit: interruptible
+    on_job_failure: all
+
+stages:
+  - deps
+  - validate
+  - k3s
+  - deploy
+  - release
+
+variables:
+  TERRAFORM_MODULE_DIR: ${CI_PROJECT_DIR}
+  TERRAFORM_MODULE_SYSTEM: kubernetes
+
+.upload_job_template: &upload_job
+  stage: deploy
+  image: docker.io/curlimages/curl:8.18.0
+  script:
+    - TERRAFORM_MODULE_NAME=$(echo "${TERRAFORM_MODULE_NAME}" | tr " _" -)
+    - tar -vczf /tmp/${TERRAFORM_MODULE_NAME}-${TERRAFORM_MODULE_SYSTEM}-${TERRAFORM_MODULE_VERSION}.tgz -C ${TERRAFORM_MODULE_DIR} --exclude=./.git .
+    - 'curl -k --fail-with-body --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}"
+      --upload-file /tmp/${TERRAFORM_MODULE_NAME}-${TERRAFORM_MODULE_SYSTEM}-${TERRAFORM_MODULE_VERSION}.tgz
+      ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${TERRAFORM_MODULE_SYSTEM}/${TERRAFORM_MODULE_NAME}/${TERRAFORM_MODULE_VERSION}/file'
+
+download:ca:
+  stage: deps
+  image: docker.io/curlimages/curl:8.18.0
+  script:
+    - if [ ! -f ca_test.crt ]; then curl -k https://nexus.bank.srv/repository/crl/Test_Root_New_KubanKredit_CA.crt -o ca_test.crt; fi
+    - if [ ! -f ca_prod.crt ]; then curl -k https://nexus.bank.srv/repository/crl/SUBCA-CA2.crt -o ca_prod.crt; fi
+  artifacts:
+    paths:
+      - ca_*.crt
+    expire_in: 1 day
+    public: false
+
+validate:
+  stage: validate
+  image: docker.io/hashicorp/terraform:1.15
+  dependencies: ["download:ca"]
+  variables:
+    TF_CLI_CONFIG_FILE: ".gitlab-terraform.rc"
+  before_script:
+    - mv ca_*.crt /usr/local/share/ca-certificates/
+    - update-ca-certificates
+    - |
+      cat > .gitlab-terraform.rc << EOF
+      provider_installation {
+        network_mirror {
+          url = "https://tfregistry"
+          include = ["registry.terraform.io/*/*"]
+        }
+        direct {
+          exclude = ["registry.terraform.io/*/*"]
+        }
+      }
+      EOF
+    - terraform --version
+    - terraform init
+  script:
+    - terraform fmt -check=true -recursive
+    - terraform validate
+
+checkov:
+  stage: validate
+  image: docker.io/bridgecrew/checkov:3.3.5
+  dependencies: []
+  script:
+    - checkov -d ./ --skip-download --output json
+
+tflint:
+  stage: validate
+  image:
+    name: ghcr.io/terraform-linters/tflint:v0.63.1
+    entrypoint: [""]
+  dependencies: []
+  script:
+    - /bin/sh -c "tflint --init && tflint"
+
+k3s:
+  stage: k3s
+  image: docker.io/hashicorp/terraform:1.15
+  dependencies: ["download:ca"]
+  services:
+    - name: docker.io/rancher/k3s:v1.36.2-k3s1
+      alias: k3s
+      entrypoint:
+        [
+          "/bin/sh",
+          "-c",
+          "k3s server --cluster-init --tls-san=k3s --tls-san=localhost --write-kubeconfig=/builds/kubeconfig.yaml --write-kubeconfig-mode=644 --disable=traefik",
+        ]
+  variables:
+    TF_CLI_CONFIG_FILE: ".gitlab-terraform.rc"
+    KUBECONFIG: "${CI_PROJECT_DIR}/.kube/config"
+  before_script:
+    - mv ca_*.crt /usr/local/share/ca-certificates/
+    - update-ca-certificates
+    - |
+      cat > .gitlab-terraform.rc << EOF
+      provider_installation {
+        network_mirror {
+          url = "https://tfregistry"
+          include = ["registry.terraform.io/*/*"]
+        }
+        direct {
+          exclude = ["registry.terraform.io/*/*"]
+        }
+      }
+      EOF
+    - terraform init
+    - mkdir -p .kube
+    - until [ -f "${CI_PROJECT_DIR}/kubeconfig.yaml" ]; do echo "Waiting for kubeconfig.yaml to be created..."; sleep 2; done
+    - sed 's/127.0.0.1/k3s/g' "${CI_PROJECT_DIR}/kubeconfig.yaml" > "${KUBECONFIG}"
+    - until wget --no-check-certificate --quiet --output-document=/dev/null https://k3s:6443/readyz; do echo "Waiting for K3s API to be ready..."; sleep 2; done
+  script:
+    - terraform apply -auto-approve
+    - sleep 20
+    - k3s kubectl get pods -A
+    - ! k3s kubectl get pods -A --no-headers | grep -E "CrashLoopBackOff|Error|ImagePullBackOff|ContainerStatusUnknown"
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "develop"
+      when: on_success
+    - if: $CI_COMMIT_BRANCH == "develop" && $CI_COMMIT_MESSAGE =~ /.*\[run-deploy\]$/
+      when: manual
+    - if: $CI_COMMIT_MESSAGE =~ /.*\[k3s\]$/
+      when: manual
+
+upload:develop:
+  <<: *upload_job
+  variables:
+    TERRAFORM_MODULE_NAME: ${CI_PROJECT_NAME}
+    TERRAFORM_MODULE_VERSION: $[[ inputs.version ]]-${CI_COMMIT_SHORT_SHA}
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop" && $CI_COMMIT_MESSAGE =~ /.*\[run-deploy\]$/
+    - if: $CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "web"
+
+upload:release:
+  <<: *upload_job
+  variables:
+    TERRAFORM_MODULE_NAME: ${CI_PROJECT_NAME}
+    TERRAFORM_MODULE_VERSION: ${CI_COMMIT_TAG}
+  rules:
+    - if: $CI_COMMIT_TAG =~ "/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/"
+      when: on_success
+
+release:job:
+  stage: release
+  image: docker.io/gitlab-org/cli:18.3
+  dependencies: ["download:ca", "upload:release"]
+  variables:
+    GLAB_CHECK_UPDATE: false
+    GLAB_SEND_TELEMETRY: false
+    GITLAB_HOST: ${CI_SERVER_HOST}
+  before_script:
+    - glab config set ca_cert ca_prod.crt --host ${CI_SERVER_HOST}
+    - glab auth login --hostname ${CI_SERVER_HOST} --job-token ${CI_JOB_TOKEN}
+  script:
+    - echo "running release_job"
+  release:
+    tag_name: "$CI_COMMIT_TAG"
+    description: |
+      Release: ${CI_COMMIT_TAG}
+      Description:
+      ${CI_COMMIT_MESSAGE}
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" && $CI_COMMIT_TAG =~ "/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/"
+      when: on_success
