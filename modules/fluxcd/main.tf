@@ -4,23 +4,6 @@ resource "kubernetes_namespace_v1" "flux" {
   }
 }
 
-resource "kubernetes_secret_v1" "git_auth" {
-  for_each = { for repo in var.repositories : repo.name => repo }
-
-  metadata {
-    name      = "git-auth-${each.key}"
-    namespace = kubernetes_namespace_v1.flux.metadata[0].name
-  }
-  type = "Opaque"
-
-  data = {
-    username = each.value.username
-    password = each.value.password
-  }
-
-  depends_on = [kubernetes_namespace_v1.flux]
-}
-
 resource "helm_release" "fluxcd" {
   name       = "fluxcd"
   chart      = "flux2"
@@ -30,21 +13,38 @@ resource "helm_release" "fluxcd" {
 
   values = [
     yamlencode({
-      logLevel           = var.flux.logLevel
-      watchAllNamespaces = var.flux.watchAllNamespaces
-      installCRDs        = var.flux.installCRDs
-      clusterDomain      = var.flux.clusterDomain
-      controllers        = var.flux.controllers
-      multitenancy       = var.flux.multitenancy
-      extraValues        = var.flux.extraValues
-      prometheus = var.prometheus_podmonitor_enabled ? { PodMonitor = { enabled = true } } : {}
-      imageAutomation = var.image_automation_enabled ? { enabled = true } : {}
-    })
+      logLevel           = var.flux.log_level
+      watchAllNamespaces = var.flux.watch_all_namespaces
+      installCrds        = var.flux.install_crds
+      clusterDomain      = var.flux.cluster_domain
+      # controllers               = var.flux.controllers
+      cli = {
+        image = coalesce(
+          try(var.flux.cli["image"], null),
+          try("${var.image_repo_url}${var.flux.cli["image_path"]}", null)
+        )
+        tag = try(var.flux.cli["tag"], null)
+      }
+
+      multitenancy              = var.flux.multitenancy
+      prometheus                = var.prometheus_podmonitor_enabled ? { podMonitor = { enabled = true } } : {}
+      imageAutomationController = var.image_automation_enabled ? { create = true } : {}
+    }),
+    yamlencode({
+      for name, ctrl in var.flux.controllers : name => {
+        create = try(ctrl["create"], "true")
+        image = coalesce(
+          try(ctrl["image"], null),
+          try("${var.image_repo_url}${ctrl["image_path"]}", null)
+        )
+        tag = try(ctrl["tag"], null)
+      }
+    }),
+    yamlencode(var.flux.extra_values)
   ]
 
   depends_on = [
-    kubernetes_namespace_v1.flux,
-    kubernetes_secret_v1.git_auth,
+    kubernetes_namespace_v1.flux
   ]
 }
 
@@ -53,69 +53,17 @@ resource "helm_release" "tf_controller" {
   name       = "tf-controller"
   chart      = "tofu-controller"
   repository = var.tf_controller_chart_src.repo
-  version    = var.flux_chart_src.version
+  version    = var.tf_controller_chart_src.version
   namespace  = kubernetes_namespace_v1.flux.metadata[0].name
 
   values = [
     yamlencode({
-      runner      = var.tf_controller.runner
-      extraValues = var.tf_controller.extraValues
+      image        = var.tf_controller.image
+      runner       = var.tf_controller.runner
+      extra_values = var.tf_controller.extra_values
+      awsPackage   = var.tf_controller.awsPackage
     })
   ]
 
   depends_on = [helm_release.fluxcd]
-}
-
-resource "kubernetes_manifest" "git_repository" {
-  for_each = { for idx, repo in var.repositories : repo.name => repo }
-
-  manifest = {
-    apiVersion = "source.toolkit.fluxcd.io/v1"
-    kind       = "GitRepository"
-    metadata = {
-      name      = each.key
-      namespace = kubernetes_namespace_v1.flux.metadata[0].name
-    }
-    spec = {
-      interval = each.value.interval
-      url      = each.value.url
-      ref = {
-        branch = each.value.branch
-        tag    = each.value.tag
-      }
-      secretRef = {
-        name = kubernetes_secret_v1.git_auth[each.key].metadata[0].name
-      }
-    }
-  }
-
-  depends_on = [helm_release.fluxcd]
-}
-
-resource "kubernetes_manifest" "kustomization" {
-  for_each = { for idx, repo in var.repositories : repo.name => repo }
-
-  manifest = {
-    apiVersion = "kustomize.toolkit.fluxcd.io/v1"
-    kind       = "Kustomization"
-    metadata = {
-      name      = each.key
-      namespace = kubernetes_namespace_v1.flux.metadata[0].name
-    }
-    spec = {
-      interval   = lookup(each.value.kustomization, "interval", "5m")
-      path       = each.value.path
-      prune      = lookup(each.value.kustomization, "prune", true)
-      validation = lookup(each.value.kustomization, "validation", "client")
-      force      = lookup(each.value.kustomization, "force", false)
-      sourceRef = {
-        kind      = "GitRepository"
-        name      = each.key
-        namespace = kubernetes_namespace_v1.flux.metadata[0].name
-      }
-      target_namespace = each.value.target_namespace
-    }
-  }
-
-  depends_on = [kubernetes_manifest.git_repository]
 }

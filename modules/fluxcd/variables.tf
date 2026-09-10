@@ -4,62 +4,37 @@ variable "namespace" {
   default     = "flux-system"
 }
 
-variable "repositories" {
-  description = "List of Git repositories to be managed by Flux. Each repository requires Vault path for credentials."
-  type = list(object({
-    username          = optional(string, null)
-    password          = optional(string, null)
-    name              = string
-    url               = string
-    branch            = optional(string, "main")
-    tag               = optional(string, null)
-    path              = string
-    secret_vault_path = string
-    target_namespace  = optional(string)
-    interval          = optional(string, "3m")
-    kustomization = optional(object({
-      interval   = optional(string, "5m")
-      prune      = optional(bool, true)
-      validation = optional(string, "client")
-      force      = optional(bool, false)
-    }), {})
-  }))
-
-  validation {
-    condition     = alltrue([for r in var.repositories : r.secret_vault_path != ""])
-    error_message = "Each repository must specify a non-empty secret_vault_path."
-  }
-
-  validation {
-    condition     = alltrue([for r in var.repositories : r.target_namespace != "kube-system" if r.target_namespace != null])
-    error_message = "Deploying to the 'kube-system' namespace is strictly prohibited for security reasons."
-  }
+variable "image_repo_url" {
+  description = "Base repository image"
+  type        = string
+  default     = ""
 }
 
 variable "flux" {
   description = "Flux CD config"
   type = object({
-    logLevel           = optional(string, "info")
-    watchAllNamespaces = optional(bool, true)
-    installCRDs        = optional(bool, true)
-    clusterDomain      = optional(string, "cluster.local")
+    log_level            = optional(string, "info")
+    watch_all_namespaces = optional(bool, true)
+    install_crds         = optional(bool, true)
+    cluster_domain       = optional(string, "cluster.local")
 
+    cli = optional(map(string), { create = "true" })
     controllers = optional(object({
-      helmController            = optional(map(string), {})
-      kustomizeController       = optional(map(string), {})
-      sourceController          = optional(map(string), {})
-      notificationController    = optional(map(string), {})
-      imageAutomationController = optional(map(string), {})
-      imageReflectionController = optional(map(string), {})
+      helmController            = optional(map(string), { create = "true" })
+      kustomizeController       = optional(map(string), { create = "true" })
+      sourceController          = optional(map(string), { create = "true" })
+      notificationController    = optional(map(string), { create = "true" })
+      imageAutomationController = optional(map(string), { create = "true" })
+      imageReflectionController = optional(map(string), { create = "true" })
     }), {})
 
     multitenancy = optional(object({
-      enabled               = optional(bool, false)
-      defaultServiceAccount = optional(string, "default")
-      privileged            = optional(bool, true)
+      enabled                 = optional(bool, false)
+      default_service_account = optional(string, "default")
+      privileged              = optional(bool, true)
     }), {})
 
-    extraValues = optional(any, {})
+    extra_values = optional(any, {})
   })
 
   default = {}
@@ -74,12 +49,17 @@ variable "tf_controller_enabled" {
 variable "tf_controller" {
   description = "tf-controller config"
   type = object({
+    image = optional(map(string), {})
     runner = optional(object({
-      allowedNamespaces = optional(list(string), [])
-      resources         = optional(map(string), {})
+      image              = optional(map(string), {})
+      allowed_namespaces = optional(list(string), [])
+      resources          = optional(map(string), {})
+    }), {})
+    awsPackage = optional(object({
+      install = optional(bool, false)
     }), {})
 
-    extraValues = optional(any, {})
+    extra_values = optional(any, {})
   })
 
   default = {}
@@ -88,7 +68,7 @@ variable "tf_controller" {
 variable "flux_chart_src" {
   description = "Source of Flux chart"
   type = object({
-    repo    = optional(string, "oci://xD")
+    repo    = optional(string, "oci://")
     version = optional(string, "2.18.4")
   })
 
@@ -98,8 +78,8 @@ variable "flux_chart_src" {
 variable "tf_controller_chart_src" {
   description = "Source of tf-controller chart"
   type = object({
-    repo    = optional(string, "oci://xD")
-    version = optional(string, "0.16.0")
+    repo    = optional(string, "oci://")
+    version = optional(string, "0.16.4")
   })
 
   default = {}
@@ -108,13 +88,12 @@ variable "tf_controller_chart_src" {
 variable "git_conf" {
   description = "GitRepository config"
   type = object({
-    interval  = optional(string, "3m")
-    branch    = optional(string, "main")
-    tag       = optional(string, null)
-    secretRef = optional(string, null)
-    extraSpec = optional(any, {})
+    interval   = optional(string, "3m")
+    branch     = optional(string, "main")
+    tag        = optional(string, null)
+    secret_ref = optional(string, null)
+    extra_spec = optional(any, {})
   })
-  
   default = {}
 }
 
@@ -126,9 +105,8 @@ variable "kustomization" {
     prune      = optional(bool, true)
     validation = optional(string, "client")
     force      = optional(bool, false)
-    extraSpec  = optional(any, {})
+    extra_spec = optional(any, {})
   })
-
   default = {}
 }
 

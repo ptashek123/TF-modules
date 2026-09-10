@@ -44,7 +44,7 @@ variable "fluxcd" {
 
     namespace = string
 
-    repositories = list(object({
+    repositories = optional(list(object({
       name              = string
       url               = string
       branch            = optional(string, "main")
@@ -59,46 +59,52 @@ variable "fluxcd" {
         validation = optional(string, "client")
         force      = optional(bool, false)
       }), {})
-    }))
+    })), [])
 
     flux = optional(object({
-      logLevel           = optional(string, "info")
-      watchAllNamespaces = optional(bool, true)
-      installCRDs        = optional(bool, true)
-      clusterDomain      = optional(string, "cluster.local")
+      log_level            = optional(string, "info")
+      watch_all_namespaces = optional(bool, true)
+      install_crds         = optional(bool, true)
+      cluster_domain       = optional(string, "cluster.local")
+      cli                  = optional(map(string), { image = "", tag = "v2.9.2" })
       controllers = optional(object({
-        helmController            = optional(map(string), {})
-        kustomizeController       = optional(map(string), {})
-        sourceController          = optional(map(string), {})
-        notificationController    = optional(map(string), {})
-        imageAutomationController = optional(map(string), {})
-        imageReflectionController = optional(map(string), {})
+        helmController            = optional(map(string), { image = "", tag = "v1.6.2" })
+        kustomizeController       = optional(map(string), { image = "", tag = "v1.9.3" })
+        sourceController          = optional(map(string), { image = "", tag = "v1.9.3" })
+        notificationController    = optional(map(string), { image = "", tag = "v1.9.2" })
+        imageAutomationController = optional(map(string), { image = "", tag = "v1.2.3" })
+        imageReflectionController = optional(map(string), { image = "", tag = "v1.2.3" })
       }), {})
       multitenancy = optional(object({
-        enabled               = optional(bool, false)
-        defaultServiceAccount = optional(string, "default")
-        privileged            = optional(bool, true)
+        enabled                 = optional(bool, false)
+        default_cervice_account = optional(string, "default")
+        privileged              = optional(bool, true)
       }), {})
-      extraValues = optional(any, {})
+      extra_values = optional(any, {})
     }), {})
 
     tf_controller_enabled = optional(bool, true)
     tf_controller = optional(object({
+      image = optional(map(string), { repository = "", tag = "v0.16.4" })
       runner = optional(object({
-        allowedNamespaces = optional(list(string), [])
-        resources         = optional(map(string), {})
+        image              = optional(map(string), { repository = "", tag = "v0.16.4" })
+        allowed_namespaces = optional(list(string), [])
+        resources          = optional(map(string), {})
       }), {})
-      extraValues = optional(any, {})
+      awsPackage = optional(object({
+        install = optional(bool, false)
+      }), {})
+      extravalues = optional(any, {})
     }), {})
 
     flux_chart_src = optional(object({
-      repo    = optional(string, "oci://xD")
+      repo    = optional(string, "")
       version = optional(string, "2.18.4")
     }), {})
 
     tf_controller_chart_src = optional(object({
-      repo    = optional(string, "oci://xD")
-      version = optional(string, "0.16.0")
+      repo    = optional(string, "")
+      version = optional(string, "0.16.4")
     }), {})
 
     prometheus_podmonitor_enabled = optional(bool, false)
