@@ -116,6 +116,99 @@ variable "fluxcd" {
   }
 }
 
+variable "rbac" {
+  type = object({
+    enabled = optional(bool, true)
+    roles = map(object({
+      namespace = optional(string, "default")
+      rules = list(object({
+        api_groups     = optional(list(string), [""])
+        resources      = list(string)
+        verbs          = list(string)
+        resource_names = optional(list(string), [])
+      }))
+      annotations = optional(map(string), {})
+      labels      = optional(map(string), {})
+    }))
+    role_bindings = map(object({
+      namespace = optional(string, "default")
+      role_ref = object({
+        api_group = optional(string, "rbac.authorization.k8s.io")
+        kind      = string
+        name      = string
+      })
+      subjects = list(object({
+        kind      = string
+        name      = string
+        namespace = optional(string, "")
+        api_group = optional(string, "rbac.authorization.k8s.io")
+      }))
+      annotations = optional(map(string), {})
+      labels      = optional(map(string), {})
+    }))
+    cluster_roles = map(object({
+      rules = list(object({
+        api_groups        = optional(list(string), [""])
+        resources         = list(string)
+        verbs             = list(string)
+        resource_names    = optional(list(string), [])
+        non_resource_urls = optional(list(string), [])
+      }))
+      annotations = optional(map(string), {})
+      labels      = optional(map(string), {})
+    }))
+    cluster_role_bindings = map(object({
+      role_ref = object({
+        api_group = optional(string, "rbac.authorization.k8s.io")
+        kind      = string
+        name      = string
+      })
+      subjects = list(object({
+        kind      = string
+        name      = string
+        namespace = optional(string, "")
+        api_group = optional(string, "rbac.authorization.k8s.io")
+      }))
+      annotations = optional(map(string), {})
+      labels      = optional(map(string), {})
+    }))
+
+  })
+}
+
+variable "headlamp" {
+  type = object({
+    helm = optional(object({
+      repository = optional(string, "oci://")
+      version    = optional(string, "0.39.0")
+    }), {})
+    enabled                 = bool
+    repository              = optional(string, "")
+    in_cluster_context_name = string
+    oidc_client_id          = optional(string, "keycloak-headlamp")
+    oidc_client_secret      = optional(string, "xxxx")
+    oidc_issuer_url         = optional(string, "https://keycloak")
+    oidc_scopes             = optional(string, "openid,profile,email,offline_access")
+    oidc_use_pkce           = optional(string, "true")
+    ingress = optional(object({
+      host = optional(string, "localhost")
+      path = optional(string, "/")
+      tls = optional(object({
+        enabled     = optional(bool, false)
+        secret_name = optional(string, "")
+      }))
+    }), {})
+    headlamp_plugins = optional(list(object({
+      name  = optional(string, "")
+      image = optional(string, "")
+    })))
+  })
+  default = {
+    enabled                 = false
+    in_cluster_context_name = ""
+  }
+}
+
 variable "cert_manager" {
   description = "cert-manager configuration"
   type = object({
