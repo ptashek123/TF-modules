@@ -5,7 +5,7 @@ resource "kubernetes_node_taint" "egress" {
   }
   force = true
   taint {
-    key    = "cilium.io/egress"
+    key    = "egress/deploy"
     value  = "true"
     effect = "NoSchedule"
   }

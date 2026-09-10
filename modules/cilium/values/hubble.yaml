@@ -1,0 +1,43 @@
+%{ if hubble.enabled }
+hubble:
+  enabled: true
+  hostUsers: true
+  listenAddress: ":4244"
+  peerService:
+    clusterDomain: ${cluster_domain}
+  relay:
+    enabled: true
+    rollOutPods: true
+    image:
+      repository: "${image_repository}/hubble-relay"
+  ui:
+    enabled: true
+    rollOutPods: false
+    standalone:
+      enabled: true
+    backend:
+      image:
+        repository: "${image_repository}/hubble-ui-backend"
+      livenessProbe:
+        enabled: false
+      readinessProbe:
+        enabled: false
+    frontend:
+      image:
+        repository: "${image_repository}/hubble-ui"
+      server:
+        ipv6:
+          enabled: false
+    replicas: 1
+    baseUrl: "/"
+    ingress:
+      enabled: %{ if hubble.ingress.enabled }true%{ else }false%{ endif }
+      annotations: {}
+      className: "cilium"
+      hosts: %{ if hubble.ingress.enabled }${ jsonencode(hubble.ingress.hosts) }%{ else }[]%{ endif }
+      labels: {}
+      tls: %{ if hubble.ingress.tls.enabled }${ jsonencode(hubble.ingress.tls.list) }%{ else }[]%{ endif }
+    tmpVolume: {}
+  metrics:
+    enabled: ["dns","drop","tcp","flow","port-distribution","icmp","httpV2:exemplars=true;labelsContext=source_ip","source_namespace","source_workload","destination_ip","destination_namespace","destination_workload","traffic_direction"]
+%{ endif }

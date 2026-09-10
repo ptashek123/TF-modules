@@ -31,7 +31,7 @@ variable "webhook_timeout_seconds" {
 variable "chart_src" {
   description = "Source of cert-manager Helm chart"
   type = object({
-    repo    = optional(string, "oci://xD")
+    repo    = optional(string, "oci://")
     version = optional(string, "v1.21.0")
   })
 

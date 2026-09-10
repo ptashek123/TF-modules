@@ -1,32 +1,31 @@
 variable "cilium" {
   type = object({
-    version          = optional(string, "1.19.5")
-    helm_repository  = optional(string, "oci://xD")
-    image_repository = optional(string, "oci://xD")
-    master_node      = string
+    helm_repository  = optional(string, "oci://")
+    image_repository = optional(string, "")
+    version          = optional(string, "1.20.0")
     cluster_domain   = optional(string, "cluster.local")
-    
-    hubble_host      = optional(object({
+    hubble = optional(object({
       enabled = optional(bool, false)
       ingress = optional(object({
         enabled = optional(bool, false)
-        hosts   = optional(list(string), [])
+        hosts   = optional(list(string), ["example.com"])
         tls = optional(object({
           enabled = optional(bool, false)
-          list = optional(list(object({ secret = string, hosts = optional(list(string), []) })), [])
+          list    = optional(list(object({ secret = string, hosts = list(string) })), [])
         }), {})
       }), {})
     }), {})
-
     egress = optional(object({
       enabled = optional(bool, false)
       nodes   = optional(list(string), [])
     }), {})
-
     gatewayapi = optional(object({
       enabled = optional(bool, false)
+      node_label = optional(object({
+        key   = optional(string, "node-role.kubernetes.io/ingress")
+        value = optional(string, "")
+      }), {})
     }), {})
-
     ingress = optional(object({
       enabled = optional(bool, false)
       node_label = optional(object({
@@ -130,7 +129,7 @@ variable "cert_manager" {
     webhook_timeout_seconds           = optional(number, 30)
 
     chart_src = optional(object({
-      repo    = optional(string, "oci://xD")
+      repo    = optional(string, "oci://")
       version = optional(string, "v1.17.2")
     }), {})
 

@@ -1,0 +1,99 @@
+%{ if cilium.gatewayapi.enabled }
+gatewayAPI:
+  enabled: true
+  enableProxyProtocol: false
+  enableAppProtocol: false
+  enableAlpn: false
+  xffNumTrustedHops: 0
+  externalTrafficPolicy: Cluster
+  gatewayClass:
+    create: auto
+  secretsNamespace:
+    create: true
+    name: cilium-secrets
+    sync: true
+  hostNetwork:
+    enabled: true
+    nodes:
+      matchLabels:
+        ${ cilium.gatewayapi.node_label.key }: "${ cilium.gatewayapi.node_label.value }"
+%{ endif }
+%{ if cilium.ingress.enabled }
+ingressController:
+  enabled: true
+  default: true
+  enforceHttps: false
+  enableProxyProtocol: false
+  loadbalancerMode: shared
+  hostNetwork:
+    enabled: true
+    # sharedListenerPort: 80
+    # tlsPassthroughPort: 443
+    httpPort: 80
+    httpsPort: 443
+    nodes:
+      matchLabels:
+        ${ cilium.ingress.node_label.key }: "${ cilium.ingress.node_label.value }"
+  service:
+    annotations: {}
+    type: LoadBalancer
+%{ endif }
+kubeProxyReplacement: "true"
+k8sServiceHost: auto
+k8sServicePort: 6443
+defaultLBServiceIPAM: nodeipam
+nodeIPAM:
+  enabled: true
+egressGateway:
+  enabled: %{ if cilium.egress.enabled }true%{ else }false%{ endif }
+image:
+  repository: "${cilium.image_repository}/cilium"
+  tag: "${cilium.version}"
+bpf:
+  masquerade: true
+  tproxy: false
+  hostLegacyRouting: true
+envoy:
+  enabled: true
+  rollOutPods: true
+  securityContext:
+    capabilities:
+      keepCapNetBindService: true
+      envoy:
+        - NET_ADMIN
+        - BPF
+        - NET_BIND_SERVICE
+  image:
+    repository: "${cilium.image_repository}/cilium-envoy"
+  nodeLocality:
+    enabled: false
+operator:
+  rollOutPods: true
+  prometheus:
+    enabled: true
+  image:
+    repository: "${cilium.image_repository}/operator"
+clustermesh:
+  apiserver:
+    image:
+      repository: "${cilium.image_repository}/clustermesh-apiserver"
+certgen:
+  image:
+    repository: "${cilium.image_repository}/certgen"
+tunnelProtocol: "geneve"
+rollOutCiliumPods: true
+encryption:
+  enabled: true
+  type: wireguard
+  nodeEncryption: false
+  ztunnel:
+    image:
+      digest: "sha256:884de5adde400e39f58e36c7a729f7690466ca4a8eb4c2a8daa9c1c025115b24"
+prometheus:
+  enabled: true
+k8sClusterNetworkPolicy:
+  enabled: false
+datapathPlugins:
+  enabled: false
+socketLB:
+  enabled: true
