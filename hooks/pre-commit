@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "Start pre-commit hooks"
+echo "Start terraform fmt"
+terraform fmt --recursive
+echo "Start terraform validate"
+terraform validate
+echo "Start terraform-docs"
+terraform-docs markdown table --output-file=README.md --output-mode=inject .
