@@ -95,3 +95,13 @@ module "victoria_metrics_agent" {
   extra_args              = var.victoria_metrics_agent.extra_args
   extra_values            = var.victoria_metrics_agent.extra_values
 }
+
+module "csi_s3" {
+  count      = var.csi_s3.enabled ? 1 : 0
+  depends_on = [module.cilium]
+  source     = "./modules/csi_s3"
+  helm       = var.csi_s3.helm
+  secret     = var.csi_s3.secret
+  images     = var.csi_s3.images
+  bucket     = var.csi_s3.bucket
+}

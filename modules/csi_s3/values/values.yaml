@@ -1,0 +1,30 @@
+---
+images:
+  registrar: ${registrar_image}
+  provisioner: ${provisioner_image}
+  csi: ${csi_image}
+
+storageClass:
+  create: true
+  name: csi-s3
+  singleBucket: ${bucket}
+  # mounter to use - either geesefs, s3fs or rclone (default geesefs)
+  mounter: geesefs
+  # GeeseFS mount options
+  mountOptions: "--memory-limit 1000 --dir-mode 0750 --file-mode 0640 --enable-perms"
+  # Volume reclaim policy
+  reclaimPolicy: Delete
+  # Annotations for the storage class
+  # Example:
+  # annotations:
+  #   storageclass.kubernetes.io/is-default-class: "true"
+  annotations: {storageclass.kubernetes.io/is-default-class: "true"}
+
+tolerations:
+  all: false
+  node: []
+  controller: []
+
+nodeSelector: {}
+
+kubeletPath: /var/lib/kubelet

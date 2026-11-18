@@ -359,3 +359,30 @@ variable "victoria_metrics_agent" {
     enabled = false
   }
 }
+
+variable "csi_s3" {
+  type = object({
+    helm = optional(object({
+      repository = optional(string, "oci://")
+      version    = optional(string, "0.43.6")
+    }), {})
+    secret = optional(object({
+      access_key = optional(string, "")
+      secret_key = optional(string, "")
+      endpoint   = optional(string, "")
+      region     = optional(string, "")
+      insecure   = optional(string, "false")
+    }), {})
+    bucket = optional(string, "")
+    images = optional(object({
+      registrar   = optional(string, "yandex-cloud/csi-s3/csi-node-driver-registrar:v2.16.0")
+      provisioner = optional(string, "yandex-cloud/csi-s3/csi-provisioner:v6.2.0")
+      csi         = optional(string, "yandex-cloud/csi-s3/csi-s3-driver:0.43.6")
+    }), {})
+    enabled = bool
+  })
+  default = {
+    enabled = false
+  }
+  sensitive = true
+}
