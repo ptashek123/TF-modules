@@ -58,3 +58,13 @@ module "cert_manager" {
   extra_values                      = var.cert_manager.extra_values
   cluster_issuers                   = var.cert_manager.cluster_issuers
 }
+
+module "vault_operator" {
+  count      = var.vault_operator.enabled ? 1 : 0
+  depends_on = [module.cilium]
+  source     = "./modules/vault-operator"
+
+  namespace      = var.vault_operator.namespace
+  vault_operator = var.vault_operator.config
+  chart_src      = var.vault_operator.chart_src
+}
