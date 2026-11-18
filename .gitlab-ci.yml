@@ -8,7 +8,7 @@ spec:
 
 default:
   tags:
-    - ossi-ci-kub
+    - ci-k8s
 
 workflow:
   name: "${CI_PROJECT_TITLE} ${CI_MERGE_REQUEST_LABELS}"
@@ -37,22 +37,9 @@ variables:
       --upload-file /tmp/${TERRAFORM_MODULE_NAME}-${TERRAFORM_MODULE_SYSTEM}-${TERRAFORM_MODULE_VERSION}.tgz
       ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${TERRAFORM_MODULE_SYSTEM}/${TERRAFORM_MODULE_NAME}/${TERRAFORM_MODULE_VERSION}/file'
 
-download:ca:
-  stage: deps
-  image: docker.io/curlimages/curl:8.18.0
-  script:
-    - if [ ! -f ca_test.crt ]; then curl -k https://nexus.bank.srv/repository/crl/Test_Root_New_KubanKredit_CA.crt -o ca_test.crt; fi
-    - if [ ! -f ca_prod.crt ]; then curl -k https://nexus.bank.srv/repository/crl/SUBCA-CA2.crt -o ca_prod.crt; fi
-  artifacts:
-    paths:
-      - ca_*.crt
-    expire_in: 1 day
-    public: false
-
 validate:
   stage: validate
   image: docker.io/hashicorp/terraform:1.15
-  dependencies: ["download:ca"]
   variables:
     TF_CLI_CONFIG_FILE: ".gitlab-terraform.rc"
   before_script:
@@ -95,7 +82,6 @@ tflint:
 k3s:
   stage: k3s
   image: docker.io/hashicorp/terraform:1.15
-  dependencies: ["download:ca"]
   services:
     - name: docker.io/rancher/k3s:v1.36.2-k3s1
       alias: k3s
@@ -162,7 +148,7 @@ upload:release:
 release:job:
   stage: release
   image: docker.io/gitlab-org/cli:18.3
-  dependencies: ["download:ca", "upload:release"]
+  dependencies: ["upload:release"]
   variables:
     GLAB_CHECK_UPDATE: false
     GLAB_SEND_TELEMETRY: false
