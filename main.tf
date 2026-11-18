@@ -68,3 +68,30 @@ module "vault_operator" {
   vault_operator = var.vault_operator.config
   chart_src      = var.vault_operator.chart_src
 }
+
+module "victoria_metrics_agent" {
+  count      = var.victoria_metrics_agent.enabled ? 1 : 0
+  depends_on = [module.cilium]
+  source     = "./modules/victoria-metrics-agent"
+
+  namespace               = var.victoria_metrics_agent.namespace
+  chart_src               = var.victoria_metrics_agent.chart_src
+  kafka_enabled           = var.victoria_metrics_agent.kafka_enabled
+  kafka_brokers           = var.victoria_metrics_agent.kafka_brokers
+  kafka_topic             = var.victoria_metrics_agent.kafka_topic
+  prometheus_enabled      = var.victoria_metrics_agent.prometheus_enabled
+  prometheus_url          = var.victoria_metrics_agent.prometheus_url
+  logger_level            = var.victoria_metrics_agent.logger_level
+  logger_format           = var.victoria_metrics_agent.logger_format
+  service_monitor_enabled = var.victoria_metrics_agent.service_monitor_enabled
+  resources               = var.victoria_metrics_agent.resources
+  affinity                = var.victoria_metrics_agent.affinity
+  tolerations             = var.victoria_metrics_agent.tolerations
+  node_selector           = var.victoria_metrics_agent.node_selector
+  pod_annotations         = var.victoria_metrics_agent.pod_annotations
+  extra_env               = var.victoria_metrics_agent.extra_env
+  extra_volumes           = var.victoria_metrics_agent.extra_volumes
+  extra_volume_mounts     = var.victoria_metrics_agent.extra_volume_mounts
+  extra_args              = var.victoria_metrics_agent.extra_args
+  extra_values            = var.victoria_metrics_agent.extra_values
+}

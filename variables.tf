@@ -308,3 +308,54 @@ variable "vault_operator" {
     namespace = "vault-operator"
   }
 }
+
+variable "victoria_metrics_agent" {
+  description = "Victoria Metrics Agent configuration"
+  type = object({
+    enabled   = optional(bool, false)
+    namespace = optional(string, "victoria-metrics")
+
+    kafka_enabled = optional(bool, true)
+    kafka_brokers = optional(string, "kafka-kafka-brokers.monitoring:9092")
+    kafka_topic   = optional(string, "victoria-metrics")
+
+    prometheus_enabled = optional(bool, false)
+    prometheus_url     = optional(string, "")
+
+    logger_level  = optional(string, "INFO")
+    logger_format = optional(string, "pretty")
+
+    chart_src = optional(object({
+      repo    = optional(string, "xD")
+      version = optional(string, "0.47.0")
+    }), {})
+
+    service_monitor_enabled = optional(bool, false)
+
+    resources = optional(object({
+      requests = optional(object({
+        cpu    = optional(string, "100m")
+        memory = optional(string, "128Mi")
+      }), {})
+      limits = optional(object({
+        cpu    = optional(string, "500m")
+        memory = optional(string, "512Mi")
+      }), {})
+    }), {})
+
+    affinity        = optional(any, {})
+    tolerations     = optional(any, [])
+    node_selector   = optional(map(string), {})
+    pod_annotations = optional(map(string), {})
+
+    extra_env           = optional(any, [])
+    extra_volumes       = optional(any, [])
+    extra_volume_mounts = optional(any, [])
+    extra_args          = optional(map(string), {})
+    extra_values        = optional(any, {})
+  })
+
+  default = {
+    enabled = false
+  }
+}
