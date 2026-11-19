@@ -113,3 +113,11 @@ module "kyverno" {
   helm       = var.kyverno.helm
   registry   = var.kyverno.registry
 }
+
+module "neuvector" {
+  count      = var.neuvector.enabled ? 1 : 0
+  depends_on = [module.cilium]
+  source     = "./modules/neuvector"
+  repository = var.neuvector.repository
+  helm       = var.neuvector.helm
+}

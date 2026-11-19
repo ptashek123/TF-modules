@@ -401,3 +401,19 @@ variable "kyverno" {
   }
   sensitive = false
 }
+
+variable "neuvector" {
+  description = "Neuvector IPS/IDS System"
+  type = object({
+    enabled = optional(bool, false)
+    helm = optional(object({
+      repository = optional(string, "oci://")
+      version    = optional(string, "2.11.2")
+    }), {})
+    repository = optional(string, "")
+  })
+
+  default = {
+    enabled = false
+  }
+}
