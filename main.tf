@@ -105,3 +105,11 @@ module "csi_s3" {
   images     = var.csi_s3.images
   bucket     = var.csi_s3.bucket
 }
+
+module "kyverno" {
+  count      = var.kyverno.enabled ? 1 : 0
+  depends_on = [module.cilium]
+  source     = "./modules/kyverno"
+  helm       = var.kyverno.helm
+  registry   = var.kyverno.registry
+}

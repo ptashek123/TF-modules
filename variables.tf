@@ -386,3 +386,18 @@ variable "csi_s3" {
   }
   sensitive = true
 }
+
+variable "kyverno" {
+  type = object({
+    helm = optional(object({
+      repository = optional(string, "oci://")
+      version    = optional(string, "3.7.1")
+    }), {})
+    registry = optional(string, "reg.kyverno.io")
+    enabled  = bool
+  })
+  default = {
+    enabled = false
+  }
+  sensitive = false
+}
